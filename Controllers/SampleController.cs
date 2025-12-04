@@ -14,7 +14,7 @@ namespace yeni.Controllers
                 message = "Hello from SampleController!",
                 timestamp = DateTime.UtcNow
             });
-        }
+        } 
     }
     
     
