@@ -1,5 +1,6 @@
-﻿using Microsoft.OpenApi;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
+using yeni.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,6 +12,11 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "Yeni API", Version = "v1" });
 });
 
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    {
+        options.UseNpgsql(builder.Configuration.GetConnectionString("ApplicationDbConnectionString"));
+    }
+);
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Docker"))
