@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace yeni.Controllers
@@ -7,6 +8,7 @@ namespace yeni.Controllers
     public class SampleController : ControllerBase
     {
         [HttpGet]
+        [Authorize]
         public IActionResult Get()
         {
             return Ok(new

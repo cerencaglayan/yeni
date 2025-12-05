@@ -12,5 +12,7 @@ public class ApplicationDbContext : DbContext
     
     public DbSet<User> Users { get; set; }
     public DbSet<Memory> Memories { get; set; }
+    public DbSet<RefreshToken> RefreshTokens { get; set; }
+
     
 }
