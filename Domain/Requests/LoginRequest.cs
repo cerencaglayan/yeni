@@ -2,6 +2,6 @@
 
 public class LoginRequest
 {
-    public string Name { get; set; } = null!;
+    public string Name { get; set; } = null!; // username 
     public string Password { get; set; } = null!;
 }

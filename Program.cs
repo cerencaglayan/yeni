@@ -5,13 +5,14 @@ using Microsoft.OpenApi.Models;
 using System.Text;
 using yeni.Configuration;
 using yeni.Data;
+using yeni.Data.Repository;
+using yeni.Domain.Repository;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ✅ CONTROLLERS
 builder.Services.AddControllers();
 
-// ✅ SWAGGER (SADECE BURADA EKLENECEK)
+// ✅ SWAGGER 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -21,7 +22,6 @@ builder.Services.AddSwaggerGen(c =>
         Version = "v1"
     });
 
-    // ✅ JWT SWAGGER AUTH
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -48,7 +48,6 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// ✅ DB
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
     options.UseNpgsql(
@@ -56,7 +55,6 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     );
 });
 
-// ✅ JWT AUTH
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 
 builder.Services.AddAuthentication(options =>
@@ -81,13 +79,12 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// ✅ TOKEN SERVICE
 builder.Services.AddScoped<TokenService>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
 
 
 var app = builder.Build();
 
-// ✅ MIDDLEWARE
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
@@ -99,7 +96,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 
-// ✅ DOCKER PORT
 var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
 app.Urls.Add($"http://*:{port}");
 

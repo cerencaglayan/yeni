@@ -1,6 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using yeni.Configuration;
+using yeni.Data;
 using yeni.Domain.Entities.Base;
+using yeni.Domain.Error;
+using yeni.Domain.Repository;
 using yeni.Domain.Requests;
 
 namespace yeni.Controllers;
@@ -10,23 +14,35 @@ namespace yeni.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly TokenService _tokenService;
+    private readonly ApplicationDbContext _db;
+    private readonly IUserRepository _userRepository;
 
-    public AuthController(TokenService tokenService)
+    public AuthController(TokenService tokenService, IUserRepository userRepository)
     {
         _tokenService = tokenService;
+        _userRepository = userRepository; 
     }
 
+    /*
+     * Eksikler:
+     * - tokenları silmek için bir mekanizma yok.
+     * 
+     */
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
-        if (request.Name != "admin" || request.Password != "123456")
-            return Unauthorized("Hatalı giriş");
+        var user = await _userRepository.GetByNameAsync(request.Name);
 
-        var user = new User
-        {
-            Id = 1,
-            Name = request.Name
-        };
+        if (user == null)
+            return BadRequest(UserErrors.UserNotfound(request.Name));
+
+        var isPasswordValid = PasswordHasher.Verify(
+            request.Password,
+            user.Password
+        );
+
+        if (!isPasswordValid)
+            return BadRequest(UserErrors.InvalidCurrentPassword());
 
         var accessToken = _tokenService.CreateAccessToken(user);
         var refreshToken = await _tokenService.CreateRefreshTokenAsync(user.Id);
