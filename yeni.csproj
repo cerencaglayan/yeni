@@ -24,6 +24,7 @@
 
     <ItemGroup>
       <Folder Include="Data\Migrations\" />
+      <Folder Include="Domain\DTO\Responses\" />
       <Folder Include="Domain\Responses\" />
     </ItemGroup>
 

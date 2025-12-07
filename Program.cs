@@ -3,9 +3,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
+using Microsoft.AspNetCore.Mvc;
 using yeni.Configuration;
 using yeni.Data;
 using yeni.Data.Repository;
+using yeni.Domain.DTO.Requests;
 using yeni.Domain.Repository;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -48,6 +50,10 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+builder.Services.Configure<GmailConfig>(
+    builder.Configuration.GetSection(GmailConfig.GmailOptionKey));
+
+
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
     options.UseNpgsql(
@@ -57,30 +63,31 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.TokenValidationParameters = new TokenValidationParameters
+/*builder.Services.AddAuthentication(options =>
     {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
 
-        ValidIssuer = jwtSettings["Issuer"],
-        ValidAudience = jwtSettings["Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(jwtSettings["Key"]!)
-        )
-    };
-});
+            ValidIssuer = jwtSettings["Issuer"],
+            ValidAudience = jwtSettings["Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(jwtSettings["Key"]!)
+            )
+        };
+    });*/
 
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IMailService, MailService>();
 
 
 var app = builder.Build();
@@ -98,6 +105,15 @@ app.UseAuthorization();
 
 var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
 app.Urls.Add($"http://*:{port}");
+
+app.MapPost("/email", async (
+            [FromBody] SendMailRequest request, IMailService mailService)
+        =>
+    {
+        await mailService.SendMailAsync(request);
+    }
+);
+
 
 app.MapControllers();
 app.Run();
