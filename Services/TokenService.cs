@@ -2,6 +2,7 @@
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using yeni.Data;
 using yeni.Domain.Entities.Base;
@@ -62,5 +63,18 @@ public class TokenService
         await _db.SaveChangesAsync();
 
         return refreshToken;
+    }
+
+
+    public async Task<int> DeleteRefreshTokenAsync(int userId)
+    {
+        var refreshTokens = await _db.RefreshTokens
+            .Where(x => x.UserId == userId && !x.IsRevoked)
+            .ToListAsync();
+
+        _db.RefreshTokens.RemoveRange(refreshTokens);
+
+        await _db.SaveChangesAsync();
+        return userId;
     }
 }

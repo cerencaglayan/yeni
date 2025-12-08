@@ -65,7 +65,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 
-/*builder.Services.AddAuthentication(options =>
+builder.Services.AddAuthentication(options =>
     {
         options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
         options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -85,7 +85,11 @@ var jwtSettings = builder.Configuration.GetSection("Jwt");
                 Encoding.UTF8.GetBytes(jwtSettings["Key"]!)
             )
         };
-    });*/
+    })
+    
+    
+    
+    ;
 
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();

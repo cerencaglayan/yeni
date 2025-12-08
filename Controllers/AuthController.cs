@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using yeni.Configuration;
 using yeni.Data;
@@ -54,4 +56,14 @@ public class AuthController : ControllerBase
         });
     }
 
+    [HttpPost("logout")]
+    [Authorize]
+    public async Task<IActionResult> Logout()
+    {
+        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+        await _tokenService.DeleteRefreshTokenAsync(userId);
+
+        return Ok(new { message = "Logged out successfully" });
+    }
 }
