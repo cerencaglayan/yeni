@@ -3,7 +3,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
+using Amazon.S3;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using yeni.Configuration;
 using yeni.Data;
 using yeni.Data.Repository;
@@ -88,7 +90,9 @@ var jwtSettings = builder.Configuration.GetSection("Jwt");
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IMailService, MailService>();
-
+builder.Services.AddScoped<IAttachmentRepository, AttachmentRepository>();
+builder.Services.AddScoped<IMemoryAttachmentRepository, MemoryAttachmentRepository>();
+builder.Services.AddScoped<IAttachmentRepository, AttachmentRepository>();
 
 var app = builder.Build();
 
@@ -113,6 +117,7 @@ app.MapPost("/email", async (
         await mailService.SendMailAsync(request);
     }
 );
+
 
 
 app.MapControllers();
