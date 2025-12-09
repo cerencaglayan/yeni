@@ -17,19 +17,19 @@ public class MemoryAttachment : Entity
     
     public Attachment Attachment { get; set; } = null!;
 
-    private MemoryAttachment(int id, int memoryId, int AttachmentId, int displayOrder, string? caption)
+    private MemoryAttachment(int id, int memoryId, int attachmentId, int displayOrder, string? caption)
     {
         Id = id;
         MemoryId = memoryId;
-        AttachmentId = AttachmentId;
+        AttachmentId = attachmentId;
         DisplayOrder = displayOrder;
         Caption = caption;
     }
 
     public MemoryAttachment() { }
 
-    public static MemoryAttachment Create(int memoryId, int AttachmentId, int displayOrder, string? caption = null)
+    public static MemoryAttachment Create(int memoryId, int attachmentId, int displayOrder, string? caption = null)
     {
-        return new MemoryAttachment(0, memoryId, AttachmentId, displayOrder, caption);
+        return new MemoryAttachment(0, memoryId, attachmentId, displayOrder, caption);
     }   
 }

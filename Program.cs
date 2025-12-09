@@ -4,6 +4,8 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
 using Amazon.S3;
+using Amazon.S3.Model;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using yeni.Configuration;
@@ -97,6 +99,52 @@ builder.Services.AddScoped<IMailService, MailService>();
 builder.Services.AddScoped<IAttachmentRepository, AttachmentRepository>();
 builder.Services.AddScoped<IMemoryAttachmentRepository, MemoryAttachmentRepository>();
 builder.Services.AddScoped<IAttachmentRepository, AttachmentRepository>();
+// ✅ AWS / B2 CONFIG
+// ✅ B2 OPTIONS
+builder.Services.Configure<B2StorageOptions>(
+    builder.Configuration.GetSection("B2Storage"));
+
+// ✅ AWS S3 CLIENT (B2 S3-COMPATIBLE)
+builder.Services.AddSingleton<IAmazonS3>(sp =>
+{
+    var options = sp.GetRequiredService<IOptions<B2StorageOptions>>().Value;
+
+    var config = new AmazonS3Config
+    {
+        ServiceURL = options.ServiceUrl,
+        ForcePathStyle = true
+    };
+
+    var client =  new AmazonS3Client(
+        options.AccessKey,
+        options.SecretKey,
+        config
+    );
+    PutObjectRequest request = new PutObjectRequest();
+    var stream = new MemoryStream();
+    
+    request.InputStream = stream;
+    request.BucketName = options.BucketName;      
+    request.Key = "data/";    
+    request.CannedACL = S3CannedACL.PublicRead;
+
+    client.PutObjectAsync(request);  
+    
+    return client;
+});
+
+// ✅ STORAGE SERVICE INTERFACE KAYDI
+builder.Services.AddScoped<IFileStorageService, B2StorageService>();
+
+
+// ✅ INTERFACE ÜZERİNDEN KAYIT
+builder.Services.AddScoped<B2StorageService>();
+builder.Services.AddScoped<MemoryService>();
+builder.Services.AddScoped<IMemoryRepository, MemoryRepository>();
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 104857600; // 100MB
+});
 
 var app = builder.Build();
 
