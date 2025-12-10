@@ -26,7 +26,19 @@ public class UserRepository(ApplicationDbContext dbContext):IUserRepository
             .Where(q => q.Name == name && !q.IsDeleted)
             .FirstOrDefaultAsync(cancellationToken);
     }
-    
+
+    public async Task<List<User?>> GetByBirthdayAsync(DateTime date, CancellationToken cancellationToken = default)
+    {
+        return await dbContext.Set<User>()
+            .Where(q =>
+                q.Birthday.HasValue &&              
+                !q.IsDeleted &&                  
+                q.Birthday.Value.Day == date.Day && 
+                q.Birthday.Value.Month == date.Month
+            )
+            .ToListAsync(cancellationToken);
+    }
+
     
     
     

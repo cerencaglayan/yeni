@@ -145,6 +145,8 @@ builder.Services.Configure<FormOptions>(options =>
 {
     options.MultipartBodyLengthLimit = 104857600; // 100MB
 });
+builder.Services.AddHostedService<TimerService>();
+builder.Services.AddScoped<MailJob>();
 
 var app = builder.Build();
 
