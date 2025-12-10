@@ -42,17 +42,11 @@ public class MemoryController : ControllerBase
     }
 
     [HttpGet("{memoryId}")]
+    [Authorize]
     public async Task<IActionResult> GetMemory(int memoryId, CancellationToken ct)
     {
-        try
-        {
-            var result = await _memoryService.GetMemoryByIdAsync(memoryId, ct);
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            return NotFound(new { error = ex.Message });
-        }
+        var result = await _memoryService.GetMemoryByIdAsync(memoryId, ct);
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(new {});
     }
 
     [HttpGet("my-memories")]
@@ -65,26 +59,17 @@ public class MemoryController : ControllerBase
 
     [HttpPost("{memoryId}/attachments")]
     [Consumes("multipart/form-data")]
-    public async Task<IActionResult> AddAttachments(
-        int memoryId,
-        [FromForm] List<IFormFile> files,
-        [FromForm] List<string?>? captions,
-        CancellationToken ct)
+    public async Task<IActionResult> AddAttachments(int memoryId, [FromForm] List<IFormFile> files, [FromForm] List<string?>? captions, CancellationToken ct)
     {
         try
         {
             var userId = GetUserId();
-            var result = await _memoryService.AddAttachmentsToMemoryAsync(
-                memoryId, files, userId, captions, ct);
+            var result = await _memoryService.AddAttachmentsToMemoryAsync(memoryId, files, userId, captions, ct);
             return Ok(result);
         }
         catch (UnauthorizedAccessException)
         {
             return Forbid();
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { error = ex.Message });
         }
     }
 

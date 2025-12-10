@@ -1,38 +1,20 @@
-﻿using yeni.Domain.DTO.Requests;
+﻿using yeni.Domain.Common;
+using yeni.Domain.DTO.Requests;
 using yeni.Domain.DTO.Responses;
 using yeni.Domain.Entities.Base;
+using yeni.Domain.Error;
 using yeni.Domain.Repository;
 
 namespace yeni.Configuration;
 
-public class MemoryService
+public class MemoryService(IMemoryRepository _memoryRepo,IAttachmentRepository _attachmentRepo,IMemoryAttachmentRepository _memoryAttachmentRepo,B2StorageService _storageService)
 {
-    private readonly IMemoryRepository _memoryRepo;
-    private readonly IAttachmentRepository _attachmentRepo;
-    private readonly IMemoryAttachmentRepository _memoryAttachmentRepo;
-    private readonly B2StorageService _storageService;
-
-    public MemoryService(
-        IMemoryRepository memoryRepo,
-        IAttachmentRepository attachmentRepo,
-        IMemoryAttachmentRepository memoryAttachmentRepo,
-        B2StorageService storageService)
-    {
-        _memoryRepo = memoryRepo;
-        _attachmentRepo = attachmentRepo;
-        _memoryAttachmentRepo = memoryAttachmentRepo;
-        _storageService = storageService;
-    }
 
     /// <summary>
     /// Yeni memory oluşturur ve dosyaları yükler
     /// </summary>
-    public async Task<MemoryResponse> CreateMemoryWithAttachmentsAsync(
-        CreateMemoryRequest request,
-        int userId,
-        CancellationToken ct = default)
+    public async Task<Result<MemoryResponse>> CreateMemoryWithAttachmentsAsync(CreateMemoryRequest request, int userId, CancellationToken ct = default)
     {
-        // 1. Memory'yi oluştur
         var memory = new Memory
         {
             Description = request.Description,
@@ -42,7 +24,6 @@ public class MemoryService
 
         memory = await _memoryRepo.CreateAsync(memory, ct);
 
-        // 2. Dosyaları yükle ve attachment'ları oluştur
         var attachments = new List<Attachment>();
         if (request.Files != null && request.Files.Any())
         {
@@ -51,7 +32,6 @@ public class MemoryService
             {
                 var filePath = await _storageService.UploadFileAsync(file, userId, ct);
 
-                // Attachment kaydı oluştur
                 var attachment = Attachment.Create(
                     fileName: file.FileName,
                     filePath: filePath,
@@ -63,7 +43,6 @@ public class MemoryService
                 attachment = await _attachmentRepo.CreateAsync(attachment, ct);
                 attachments.Add(attachment);
 
-                // Memory-Attachment ilişkisini oluştur
                 await _memoryAttachmentRepo.CreateAsync(
                     MemoryAttachment.Create(
                         memoryId: memory.Id,
@@ -80,11 +59,12 @@ public class MemoryService
     /// <summary>
     /// Memory'yi attachments ile birlikte getirir
     /// </summary>
-    public async Task<MemoryResponse> GetMemoryByIdAsync(int memoryId, CancellationToken ct = default)
+    public async Task<Result<MemoryResponse>> GetMemoryByIdAsync(int memoryId, CancellationToken ct = default)
     {
         var memory = await _memoryRepo.GetByIdWithAttachmentsAsync(memoryId, ct);
+        
         if (memory == null)
-            throw new Exception("Memory not found");
+            return Result<MemoryResponse>.Failure(MemoryErrors.MemoryNotfound(memoryId));
 
         return MapToDto(memory);
     }
@@ -101,12 +81,7 @@ public class MemoryService
     /// <summary>
     /// Memory'ye yeni dosyalar ekler
     /// </summary>
-    public async Task<MemoryResponse> AddAttachmentsToMemoryAsync(
-        int memoryId,
-        List<IFormFile> files,
-        int userId,
-        List<string?>? captions = null,
-        CancellationToken ct = default)
+    public async Task<Result<MemoryResponse>> AddAttachmentsToMemoryAsync(int memoryId, List<IFormFile> files, int userId, List<string?>? captions = null, CancellationToken ct = default)
     {
         var memory = await _memoryRepo.GetByIdAsync(memoryId, ct);
         if (memory == null)
@@ -115,7 +90,6 @@ public class MemoryService
         if (memory.UserId != userId)
             throw new UnauthorizedAccessException("You can only add attachments to your own memories");
 
-        // Mevcut en yüksek display order'ı bul
         var existingAttachments = await _memoryAttachmentRepo.GetByMemoryIdAsync(memoryId, ct);
         var maxDisplayOrder = existingAttachments.Any() ? existingAttachments.Max(x => x.DisplayOrder) : -1;
 
@@ -153,11 +127,7 @@ public class MemoryService
     /// <summary>
     /// Memory'den attachment'ı kaldırır ve B2'den siler
     /// </summary>
-    public async Task<bool> RemoveAttachmentFromMemoryAsync(
-        int memoryId,
-        int attachmentId,
-        int userId,
-        CancellationToken ct = default)
+    public async Task<bool> RemoveAttachmentFromMemoryAsync(int memoryId, int attachmentId, int userId, CancellationToken ct = default)
     {
         var memory = await _memoryRepo.GetByIdAsync(memoryId, ct);
         if (memory == null || memory.UserId != userId)
@@ -192,11 +162,17 @@ public class MemoryService
     /// <summary>
     /// Memory'yi siler (soft delete)
     /// </summary>
-    public async Task<bool> DeleteMemoryAsync(int memoryId, int userId, CancellationToken ct = default)
+    public async Task<Result<bool>> DeleteMemoryAsync(int memoryId, int userId, CancellationToken ct = default)
     {
         var memory = await _memoryRepo.GetByIdAsync(memoryId, ct);
-        if (memory == null || memory.UserId != userId)
-            throw new UnauthorizedAccessException();
+        
+        if (memory == null )
+            return Result<bool>.Failure(MemoryErrors.MemoryNotfound(memoryId));
+
+        if (memory.UserId != userId)
+        {
+            return Result<bool>.Failure(UserErrors.Unauthorized(userId));
+        }
 
         await _memoryRepo.DeleteAsync(memoryId, ct);
         return true;
@@ -205,33 +181,35 @@ public class MemoryService
     /// <summary>
     /// Attachment caption'ını günceller
     /// </summary>
-    public async Task UpdateAttachmentCaptionAsync(
-        int memoryId,
-        int attachmentId,
-        string caption,
-        int userId,
-        CancellationToken ct = default)
+    public async Task<Result<bool>> UpdateAttachmentCaptionAsync(int memoryId, int attachmentId, string caption, int userId, CancellationToken ct = default)
     {
         var memory = await _memoryRepo.GetByIdAsync(memoryId, ct);
-        if (memory == null || memory.UserId != userId)
-            throw new UnauthorizedAccessException();
+        
+        if (memory == null )
+            return Result<bool>.Failure(MemoryErrors.MemoryNotfound(memoryId));
+
+        if (memory.UserId != userId)
+        {
+            return Result<bool>.Failure(UserErrors.Unauthorized(userId));
+        }
 
         var memoryAttachment = await _memoryAttachmentRepo.GetByMemoryAndAttachmentIdAsync(memoryId, attachmentId, ct);
         if (memoryAttachment == null)
-            throw new Exception("Attachment not found in this memory");
+            return Result<bool>.Failure(MemoryAttachmentErrors.MemoryAttachmentNotFound(memoryId));
 
         memoryAttachment.Caption = caption;
         await _memoryAttachmentRepo.UpdateAsync(memoryAttachment, ct);
+        return true;
     }
 
+    /*
+     *
+     * TODO: BU OLMALI MI ??? 
+     */
     /// <summary>
     /// Attachment sıralamasını günceller
     /// </summary>
-    public async Task ReorderAttachmentsAsync(
-        int memoryId,
-        Dictionary<int, int> attachmentOrders, // attachmentId -> newDisplayOrder
-        int userId,
-        CancellationToken ct = default)
+    public async Task ReorderAttachmentsAsync(int memoryId, Dictionary<int, int> attachmentOrders, int userId, CancellationToken ct = default)
     {
         var memory = await _memoryRepo.GetByIdAsync(memoryId, ct);
         if (memory == null || memory.UserId != userId)
