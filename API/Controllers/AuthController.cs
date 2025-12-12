@@ -1,5 +1,6 @@
 ﻿using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using yeni.Application.Services;
 using yeni.Data;
@@ -13,42 +14,14 @@ namespace yeni.API.Controllers;
 
 [ApiController]
 [Route("api/auth")]
-public class AuthController : ControllerBase
+public class AuthController(TokenService tokenService,UserService userService) : ControllerBase
 {
-    private readonly TokenService _tokenService;
-    private readonly ApplicationDbContext _db;
-    private readonly IUserRepository _userRepository;
-
-    public AuthController(TokenService tokenService, IUserRepository userRepository)
-    {
-        _tokenService = tokenService;
-        _userRepository = userRepository; 
-    }
-
+    
     [HttpPost("login")]
-    public async Task<IActionResult> Login([FromBody] LoginRequest request)
+    public async Task<IActionResult> Login([FromBody] LoginRequest request,CancellationToken cancellationToken = default)
     {
-        var user = await _userRepository.GetByNameAsync(request.Name);
-
-        if (user == null)
-            return BadRequest(UserErrors.UserNotfound(request.Name));
-
-        var isPasswordValid = PasswordHasher.Verify(
-            request.Password,
-            user.Password
-        );
-
-        if (!isPasswordValid)
-            return BadRequest(UserErrors.InvalidCurrentPassword());
-
-        var accessToken = _tokenService.CreateAccessToken(user);
-        var refreshToken = await _tokenService.CreateRefreshTokenAsync(user.Id);
-
-        return Ok(new
-        {
-            accessToken,
-            refreshToken
-        });
+        var result = await userService.Login(request, cancellationToken);
+        return result.IsSuccess ? Ok(result.Value) :  Problem(result.Error.Message);
     }
 
     [HttpPost("logout")]
@@ -57,8 +30,19 @@ public class AuthController : ControllerBase
     {
         var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
-        await _tokenService.DeleteRefreshTokenAsync(userId);
+        var result = await userService.Logout(userId);
 
-        return Ok(new { message = "Logged out successfully" });
+        if (result.IsFailure)
+            return BadRequest(result.Error);
+
+        return Ok();
     }
+    
+    
+    
+    
+    
+    
+    
+    
 }

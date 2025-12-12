@@ -9,20 +9,9 @@ namespace yeni.API.Controllers;
 [ApiController]
 [Route("api/memories")]
 [Authorize]
-public class MemoryController : ControllerBase
+public class MemoryController(MemoryService memoryService) : ControllerBase
 {
-    private readonly MemoryService _memoryService;
-
-    public MemoryController(MemoryService memoryService)
-    {
-        _memoryService = memoryService;
-    }
-
-    private int GetUserId()
-    {
-        return int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-    }
-
+    
     [HttpPost]
     [Consumes("multipart/form-data")]
     public async Task<IActionResult> CreateMemory([FromForm] CreateMemoryRequest request, CancellationToken ct)
@@ -30,7 +19,7 @@ public class MemoryController : ControllerBase
         try
         {
             var userId = GetUserId();
-            var result = await _memoryService.CreateMemoryWithAttachmentsAsync(request, userId, ct);
+            var result = await memoryService.CreateMemoryWithAttachmentsAsync(request, userId, ct);
             return Ok(result);
         }
         catch (Exception ex)
@@ -43,7 +32,7 @@ public class MemoryController : ControllerBase
     [Authorize]
     public async Task<IActionResult> GetMemory(int memoryId, CancellationToken ct)
     {
-        var result = await _memoryService.GetMemoryByIdAsync(memoryId, ct);
+        var result = await memoryService.GetMemoryByIdAsync(memoryId, ct);
         return result.IsSuccess ? Ok(result.Value) : BadRequest(new {});
     }
 
@@ -51,7 +40,7 @@ public class MemoryController : ControllerBase
     public async Task<IActionResult> GetMyMemories(CancellationToken ct)
     {
         var userId = GetUserId();
-        var result = await _memoryService.GetUserMemoriesAsync(userId, ct);
+        var result = await memoryService.GetUserMemoriesAsync(userId, ct);
         return Ok(result);
     }
 
@@ -62,7 +51,7 @@ public class MemoryController : ControllerBase
         try
         {
             var userId = GetUserId();
-            var result = await _memoryService.AddAttachmentsToMemoryAsync(memoryId, files, userId, captions, ct);
+            var result = await memoryService.AddAttachmentsToMemoryAsync(memoryId, files, userId, captions, ct);
             return Ok(result);
         }
         catch (UnauthorizedAccessException)
@@ -77,7 +66,7 @@ public class MemoryController : ControllerBase
         try
         {
             var userId = GetUserId();
-            var result = await _memoryService.RemoveAttachmentFromMemoryAsync(memoryId, attachmentId, userId, ct);
+            var result = await memoryService.RemoveAttachmentFromMemoryAsync(memoryId, attachmentId, userId, ct);
             return Ok(new { success = result });
         }
         catch (UnauthorizedAccessException)
@@ -96,7 +85,7 @@ public class MemoryController : ControllerBase
         try
         {
             var userId = GetUserId();
-            var result = await _memoryService.DeleteMemoryAsync(memoryId, userId, ct);
+            var result = await memoryService.DeleteMemoryAsync(memoryId, userId, ct);
             return Ok(new { success = result });
         }
         catch (UnauthorizedAccessException)
@@ -109,6 +98,9 @@ public class MemoryController : ControllerBase
         }
     }
 
-
+    private int GetUserId()
+    {
+        return int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+    }
 
 }
