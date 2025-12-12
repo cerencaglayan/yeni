@@ -1,4 +1,6 @@
-﻿namespace yeni.Domain.Entities.Base;
+﻿using yeni.Domain.Entities.Base;
+
+namespace yeni.Domain.Entities;
 
 public class MemoryAttachment : Entity
 {

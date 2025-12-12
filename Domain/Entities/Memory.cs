@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using yeni.Domain.Entities.Base;
 
-namespace yeni.Domain.Entities.Base;
+namespace yeni.Domain.Entities;
 
 public class Memory : Entity
 {
